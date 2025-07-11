@@ -1,0 +1,110 @@
+// components/admin/Navigation/AdminNavigation.tsx
+'use client'
+import React from 'react';
+import { 
+  TrendingUp, 
+  Users, 
+  Shield, 
+  Calendar, 
+  Activity, 
+  Settings,
+  RefreshCw,
+  Bell,
+  LogOut
+} from 'lucide-react';
+
+interface NavigationProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  pendingVerifications: number;
+  refreshing: boolean;
+  onRefresh: () => void;
+  onLogout: () => void;
+}
+
+export default function AdminNavigation({ 
+  activeTab, 
+  setActiveTab, 
+  pendingVerifications, 
+  refreshing, 
+  onRefresh,
+  onLogout 
+}: NavigationProps) {
+  const navigationItems = [
+    { id: 'overview', label: 'Overview', icon: TrendingUp },
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'verifications', label: 'Verifications', icon: Shield },
+    { id: 'sessions', label: 'Sessions', icon: Calendar },
+    { id: 'analytics', label: 'Analytics', icon: Activity },
+    { id: 'settings', label: 'Settings', icon: Settings }
+  ];
+
+  return (
+    <nav className="bg-card border-b border-border p-4 sticky top-0 z-10">
+      <div className="flex items-center justify-between max-w-7xl mx-auto">
+        <div className="flex items-center space-x-8">
+          <h1 className="text-2xl font-bold gradient-text font-baskervville">
+            MentorMatch Admin
+          </h1>
+          <div className="flex space-x-6">
+            {navigationItems.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === id 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{label}</span>
+                {id === 'verifications' && pendingVerifications > 0 && (
+                  <span className="bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
+                    {pendingVerifications}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+            title="Refresh data"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+          
+          <div className="relative">
+            <Bell className="h-5 w-5 text-muted-foreground" />
+            {pendingVerifications > 0 && (
+              <div className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {pendingVerifications}
+              </div>
+            )}
+          </div>
+          
+          <div className="bg-destructive text-destructive-foreground px-3 py-1 rounded-full text-xs font-medium">
+            {pendingVerifications} Pending
+          </div>
+          
+          <button
+            onClick={onLogout}
+            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+            title="Logout"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+          
+          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-semibold">
+            A
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}
