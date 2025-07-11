@@ -8,9 +8,12 @@ import AdminNavigation from '@/components/admin/Navigation/AdminNavigation';
 import Overview from '@/components/admin/Dashboard/Overview';
 import UsersManagement from '@/components/admin/Dashboard/UsersManagement';
 import VerificationsManagement from '@/components/admin/Dashboard/VerificationsManagement';
+import Analytics from '@/components/admin/Dashboard/Analytics';
+import Settings from '@/components/admin/Dashboard/Settings';
 import SessionsManagement from '@/components/admin/Dashboard/SessionsManagement';
 import UserDetailsModal from '@/components/admin/Modals/UserDetailsModal';
 import VerificationDetailsModal from '@/components/admin/Modals/VerificationDetailsModal';
+import AuthCheck from '@/components/admin/AuthCheck';
 import { VerificationItem } from '@/types/admin';
 
 export default function AdminDashboardPage() {

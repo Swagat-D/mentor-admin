@@ -20,7 +20,8 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
       activeSessions,
       pendingVerifications,
       completedSessions,
-      totalRevenue
+      totalRevenue,
+      verifiedMentors
     ] = await Promise.all([
       usersCollection.countDocuments({ isActive: true }),
       usersCollection.countDocuments({ role: 'mentor', isActive: true }),
@@ -34,7 +35,8 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
       sessionsCollection.aggregate([
         { $match: { status: 'completed', 'payment.status': 'succeeded' } },
         { $group: { _id: null, total: { $sum: '$payment.amount' } } }
-      ]).toArray()
+      ]).toArray(),
+      mentorProfilesCollection.countDocuments({ isVerified: true })
     ]);
 
     // Calculate monthly growth (mock calculation for now)
