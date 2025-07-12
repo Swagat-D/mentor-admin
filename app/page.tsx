@@ -126,7 +126,7 @@ export default function HomePage() {
             
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => router.push('/auth/login')}
+                onClick={() => router.push('/admin/login')}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 Sign In

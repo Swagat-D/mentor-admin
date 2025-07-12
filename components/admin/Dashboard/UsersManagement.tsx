@@ -1,5 +1,4 @@
-// components/admin/Dashboard/UsersManagement.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Search, 
   Eye, 
@@ -10,7 +9,10 @@ import {
   Mail, 
   Calendar,
   Filter,
-  Download
+  Download,
+  X,
+  FileText,
+  Database
 } from 'lucide-react';
 import Pagination from '../Common/Pagination';
 import { UserListItem } from '@/types/admin';
@@ -51,13 +53,52 @@ export default function UsersManagement({
   loadUsers
 }: UsersManagementProps) {
   
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
 
-  const handleExportUsers = () => {
-    // TODO: Implement CSV export
-    console.log('Exporting users...');
+  const handleExportUsers = async (format: 'csv' | 'json' | 'excel') => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('format', format);
+      if (searchTerm) params.append('search', searchTerm);
+      if (filterRole !== 'all') params.append('role', filterRole);
+      if (filterStatus !== 'all') params.append('status', filterStatus);
+
+      const response = await fetch(`/api/admin/users/export?${params}`);
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      // Get filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : `users_export.${format}`;
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setShowExportModal(false);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -73,7 +114,7 @@ export default function UsersManagement({
         
         <div className="flex flex-col sm:flex-row gap-3">
           <button
-            onClick={handleExportUsers}
+            onClick={() => setShowExportModal(true)}
             className="flex items-center space-x-2 px-4 py-2 border border-border rounded-md bg-background hover:bg-muted transition-colors"
           >
             <Download className="h-4 w-4" />
@@ -272,6 +313,78 @@ export default function UsersManagement({
           itemsPerPage={20}
           onPageChange={onPageChange}
         />
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg border border-gray-200 w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold">Export Users</h3>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-gray-500 hover:text-gray-700 p-1"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <p className="text-gray-600 text-sm">
+                Choose the format for exporting {totalItems} users
+                {searchTerm || filterRole !== 'all' || filterStatus !== 'all' 
+                  ? ' (filtered results)' 
+                  : ''
+                }.
+              </p>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleExportUsers('csv')}
+                  disabled={exporting}
+                  className="w-full flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  <FileText className="h-5 w-5 text-green-600" />
+                  <div className="text-left">
+                    <div className="font-medium">CSV Format</div>
+                    <div className="text-sm text-gray-500">Comma-separated values, good for Excel</div>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => handleExportUsers('excel')}
+                  disabled={exporting}
+                  className="w-full flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  <Database className="h-5 w-5 text-blue-600" />
+                  <div className="text-left">
+                    <div className="font-medium">Excel Format</div>
+                    <div className="text-sm text-gray-500">Spreadsheet format (.xls)</div>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => handleExportUsers('json')}
+                  disabled={exporting}
+                  className="w-full flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  <FileText className="h-5 w-5 text-purple-600" />
+                  <div className="text-left">
+                    <div className="font-medium">JSON Format</div>
+                    <div className="text-sm text-gray-500">Machine-readable format</div>
+                  </div>
+                </button>
+              </div>
+              
+              {exporting && (
+                <div className="flex items-center justify-center space-x-2 text-gray-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
+                  <span>Preparing export...</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

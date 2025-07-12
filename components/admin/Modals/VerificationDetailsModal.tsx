@@ -1,4 +1,3 @@
-// components/admin/Modals/VerificationDetailsModal.tsx
 'use client'
 import React, { useState } from 'react';
 import {
@@ -36,6 +35,7 @@ export default function VerificationDetailsModal({
   const [notes, setNotes] = useState('');
   const [requestedInfo, setRequestedInfo] = useState('');
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState<string | null>(null);
 
   if (!isOpen || !verification) return null;
 
@@ -50,8 +50,13 @@ export default function VerificationDetailsModal({
         actionData.notes = notes;
       }
 
+      if (actionType === 'approve') {
+        actionData.notes = notes || 'Application approved by admin';
+      }
+
       if (actionType === 'request_info' && requestedInfo) {
         actionData.requestedInfo = requestedInfo;
+        if (notes) actionData.notes = notes;
       }
 
       await onAction(verification._id, actionType, actionData);
@@ -63,6 +68,35 @@ export default function VerificationDetailsModal({
       console.error('Action failed:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadFile = async (fileUrl: string, fileName: string) => {
+    setDownloading(fileName);
+    try {
+      // Extract the path from the fileUrl
+      const urlPath = fileUrl.replace('/uploads/', '');
+      const response = await fetch(`/api/admin/files/download/${urlPath}`);
+      
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      alert('Failed to download file. Please try again.');
+    } finally {
+      setDownloading(null);
     }
   };
 
@@ -310,8 +344,17 @@ export default function VerificationDetailsModal({
                       }`}>
                         {doc.status}
                       </span>
-                      <button className="text-primary hover:text-primary/80 p-1 hover:bg-primary/10 rounded transition-colors">
-                        <Download className="h-4 w-4" />
+                      <button 
+                        onClick={() => handleDownloadFile(doc.fileUrl, doc.fileName)}
+                        disabled={downloading === doc.fileName}
+                        className="text-primary hover:text-primary/80 p-1 hover:bg-primary/10 rounded transition-colors disabled:opacity-50"
+                        title="Download file"
+                      >
+                        {downloading === doc.fileName ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -370,6 +413,21 @@ export default function VerificationDetailsModal({
                       </span>
                     </h4>
                   </div>
+
+                  {actionType === 'approve' && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Approval Notes (Optional)
+                      </label>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="w-full px-3 py-2 border border-border rounded-md bg-input focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                        rows={3}
+                        placeholder="Add any notes about the approval..."
+                      />
+                    </div>
+                  )}
 
                   {actionType === 'reject' && (
                     <div>
