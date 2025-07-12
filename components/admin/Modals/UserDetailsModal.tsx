@@ -1,4 +1,3 @@
-// components/admin/UserDetailsModal.tsx
 'use client'
 import { useState, useEffect } from 'react'
 import { X, User, Mail, Calendar, CheckCircle, XCircle, Settings } from 'lucide-react'

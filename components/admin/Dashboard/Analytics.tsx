@@ -1,4 +1,4 @@
-// components/admin/Dashboard/Analytics.tsx
+// components/admin/Dashboard/Analytics.tsx - Enhanced Responsive Version
 import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
@@ -10,6 +10,8 @@ import {
   Activity,
   Download,
   Filter,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import StatCard from '../Common/StatCard';
 import { DashboardStats } from '@/types/admin';
@@ -22,6 +24,8 @@ interface AnalyticsProps {
 export default function Analytics({ stats, loading }: AnalyticsProps) {
   const [timeRange, setTimeRange] = useState('30d');
   const [chartType, setChartType] = useState('line');
+  const [showFilters, setShowFilters] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview']));
 
   // Mock analytics data - in real app, this would come from your analytics API
   const [analyticsData, setAnalyticsData] = useState({
@@ -71,22 +75,102 @@ export default function Analytics({ stats, loading }: AnalyticsProps) {
     console.log('Exporting analytics data...');
   };
 
+  const toggleSection = (sectionId: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(sectionId)) {
+      newExpanded.delete(sectionId);
+    } else {
+      newExpanded.add(sectionId);
+    }
+    setExpandedSections(newExpanded);
+  };
+
+  const CollapsibleSection = ({ 
+    id, 
+    title, 
+    children, 
+    defaultExpanded = false 
+  }: { 
+    id: string; 
+    title: string; 
+    children: React.ReactNode; 
+    defaultExpanded?: boolean;
+  }) => {
+    const isExpanded = expandedSections.has(id);
+    
+    return (
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <button
+          onClick={() => toggleSection(id)}
+          className="w-full flex items-center justify-between p-4 sm:p-6 hover:bg-muted/50 transition-colors sm:cursor-default"
+        >
+          <h3 className="text-base sm:text-lg font-semibold font-baskervville text-left">{title}</h3>
+          <div className="sm:hidden">
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </div>
+        </button>
+        
+        <div className={`${isExpanded ? 'block' : 'hidden'} sm:block`}>
+          <div className="px-4 pb-4 sm:px-6 sm:pb-6 sm:pt-0">
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold font-baskervville">Analytics Dashboard</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl sm:text-2xl font-bold font-baskervville">Analytics Dashboard</h2>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Platform performance metrics and insights
           </p>
         </div>
         
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0">
+          {/* Mobile: Show/Hide Filters */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="sm:hidden flex items-center justify-center space-x-2 px-4 py-2 border border-border rounded-md bg-input text-sm"
+          >
+            <Filter className="h-4 w-4" />
+            <span>Filters</span>
+          </button>
+
+          {/* Desktop: Always visible controls */}
+          <div className="hidden sm:flex sm:items-center sm:space-x-3">
+            <select 
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              className="px-4 py-2 border border-border rounded-md bg-input focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+            >
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+              <option value="1y">Last year</option>
+            </select>
+            
+            <button
+              onClick={handleExportData}
+              className="flex items-center space-x-2 px-4 py-2 border border-border rounded-md bg-background hover:bg-muted transition-colors text-sm"
+            >
+              <Download className="h-4 w-4" />
+              <span>Export</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Filters */}
+      {showFilters && (
+        <div className="sm:hidden grid grid-cols-1 gap-3 p-4 bg-card rounded-lg border border-border">
           <select 
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
-            className="px-4 py-2 border border-border rounded-md bg-input focus:outline-none focus:ring-2 focus:ring-ring"
+            className="px-3 py-2 border border-border rounded-md bg-input focus:outline-none focus:ring-2 focus:ring-ring text-sm"
           >
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>
@@ -96,160 +180,148 @@ export default function Analytics({ stats, loading }: AnalyticsProps) {
           
           <button
             onClick={handleExportData}
-            className="flex items-center space-x-2 px-4 py-2 border border-border rounded-md bg-background hover:bg-muted transition-colors"
+            className="flex items-center justify-center space-x-2 px-4 py-2 border border-border rounded-md bg-background hover:bg-muted transition-colors text-sm"
           >
             <Download className="h-4 w-4" />
-            <span>Export</span>
+            <span>Export Data</span>
           </button>
         </div>
-      </div>
+      )}
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Revenue"
-          value={stats ? `$${stats.totalRevenue.toLocaleString()}` : '$0'}
-          icon={DollarSign}
-          trend="+15.3% vs last month"
-          color="text-emerald-600"
-          loading={loading}
-        />
-        <StatCard
-          title="Active Users"
-          value={stats?.totalUsers || 0}
-          icon={Users}
-          trend="+8.2% vs last month"
-          color="text-blue-600"
-          loading={loading}
-        />
-        <StatCard
-          title="Session Rate"
-          value={stats ? `${stats.completionRate}%` : '0%'}
-          icon={Activity}
-          trend="+2.1% vs last month"
-          color="text-green-600"
-          loading={loading}
-        />
-        <StatCard
-          title="Growth Rate"
-          value={stats ? `${stats.monthlyGrowth}%` : '0%'}
-          icon={TrendingUp}
-          trend="Monthly growth"
-          color="text-purple-600"
-          loading={loading}
-        />
-      </div>
+      {/* Key Metrics - Always expanded */}
+      <CollapsibleSection id="overview" title="Key Metrics" defaultExpanded>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+          <StatCard
+            title="Total Revenue"
+            value={stats ? `$${stats.totalRevenue.toLocaleString()}` : '$0'}
+            icon={DollarSign}
+            trend="+15.3% vs last month"
+            color="text-emerald-600"
+            loading={loading}
+          />
+          <StatCard
+            title="Active Users"
+            value={stats?.totalUsers || 0}
+            icon={Users}
+            trend="+8.2% vs last month"
+            color="text-blue-600"
+            loading={loading}
+          />
+          <StatCard
+            title="Session Rate"
+            value={stats ? `${stats.completionRate}%` : '0%'}
+            icon={Activity}
+            trend="+2.1% vs last month"
+            color="text-green-600"
+            loading={loading}
+          />
+          <StatCard
+            title="Growth Rate"
+            value={stats ? `${stats.monthlyGrowth}%` : '0%'}
+            icon={TrendingUp}
+            trend="Monthly growth"
+            color="text-purple-600"
+            loading={loading}
+          />
+        </div>
+      </CollapsibleSection>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* User Growth Chart */}
-        <div className="bg-card rounded-lg p-6 border border-border">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold font-baskervville">User Growth</h3>
-            <BarChart3 className="h-5 w-5 text-muted-foreground" />
-          </div>
-          
-          <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
+        <CollapsibleSection id="user-growth" title="User Growth">
+          <div className="h-48 sm:h-64 flex items-center justify-center bg-muted/20 rounded-lg">
             <div className="text-center">
-              <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-              <p className="text-muted-foreground">Chart visualization would go here</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <BarChart3 className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm sm:text-base text-muted-foreground">Chart visualization would go here</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 Showing user growth over the last 6 months
               </p>
             </div>
           </div>
           
-          <div className="grid grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{stats?.totalUsers || 0}</div>
-              <div className="text-sm text-muted-foreground">Total Users</div>
+              <div className="text-lg sm:text-2xl font-bold text-blue-600">{stats?.totalUsers || 0}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Total Users</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{stats?.totalMentors || 0}</div>
-              <div className="text-sm text-muted-foreground">Mentors</div>
+              <div className="text-lg sm:text-2xl font-bold text-green-600">{stats?.totalMentors || 0}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Mentors</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{stats?.totalStudents || 0}</div>
-              <div className="text-sm text-muted-foreground">Students</div>
+              <div className="text-lg sm:text-2xl font-bold text-purple-600">{stats?.totalStudents || 0}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Students</div>
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Revenue Chart */}
-        <div className="bg-card rounded-lg p-6 border border-border">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold font-baskervville">Revenue Trends</h3>
-            <TrendingUp className="h-5 w-5 text-muted-foreground" />
-          </div>
-          
-          <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
+        <CollapsibleSection id="revenue-trends" title="Revenue Trends">
+          <div className="h-48 sm:h-64 flex items-center justify-center bg-muted/20 rounded-lg">
             <div className="text-center">
-              <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-              <p className="text-muted-foreground">Revenue chart would go here</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <TrendingUp className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm sm:text-base text-muted-foreground">Revenue chart would go here</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 Monthly revenue and session trends
               </p>
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 mt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-emerald-600">
+              <div className="text-lg sm:text-2xl font-bold text-emerald-600">
                 ${stats?.totalRevenue.toLocaleString() || 0}
               </div>
-              <div className="text-sm text-muted-foreground">Total Revenue</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Total Revenue</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{stats?.completedSessions || 0}</div>
-              <div className="text-sm text-muted-foreground">Completed Sessions</div>
+              <div className="text-lg sm:text-2xl font-bold text-blue-600">{stats?.completedSessions || 0}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Completed Sessions</div>
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
       </div>
 
       {/* Data Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Top Mentors */}
-        <div className="bg-card rounded-lg p-6 border border-border">
-          <h3 className="text-lg font-semibold mb-4 font-baskervville">Top Performing Mentors</h3>
-          
-          <div className="space-y-3">
+        <CollapsibleSection id="top-mentors" title="Top Performing Mentors">
+          <div className="space-y-2 sm:space-y-3">
             {analyticsData.topMentors.map((mentor, index) => (
-              <div key={index} className="flex items-center justify-between p-3 hover:bg-muted rounded-lg transition-colors">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-primary">
+              <div key={index} className="flex items-center justify-between p-2 sm:p-3 hover:bg-muted rounded-lg transition-colors">
+                <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs sm:text-sm font-medium text-primary">
                       {mentor.name.split(' ').map(n => n[0]).join('')}
                     </span>
                   </div>
-                  <div>
-                    <div className="font-medium">{mentor.name}</div>
-                    <div className="text-sm text-muted-foreground">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-sm sm:text-base truncate">{mentor.name}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">
                       {mentor.sessions} sessions • ⭐ {mentor.rating}
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-medium text-emerald-600">
+                <div className="text-right flex-shrink-0 ml-2">
+                  <div className="font-medium text-emerald-600 text-sm sm:text-base">
                     ${mentor.earnings.toLocaleString()}
                   </div>
-                  <div className="text-sm text-muted-foreground">earned</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">earned</div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Popular Subjects */}
-        <div className="bg-card rounded-lg p-6 border border-border">
-          <h3 className="text-lg font-semibold mb-4 font-baskervville">Popular Subjects</h3>
-          
-          <div className="space-y-3">
+        <CollapsibleSection id="popular-subjects" title="Popular Subjects">
+          <div className="space-y-2 sm:space-y-3">
             {analyticsData.popularSubjects.map((subject, index) => (
               <div key={index} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">{subject.subject}</span>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="font-medium text-sm sm:text-base">{subject.subject}</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground">
                     {subject.sessions} sessions ({subject.percentage}%)
                   </span>
                 </div>
@@ -262,22 +334,20 @@ export default function Analytics({ stats, loading }: AnalyticsProps) {
               </div>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
       </div>
 
       {/* Session Performance */}
-      <div className="bg-card rounded-lg p-6 border border-border">
-        <h3 className="text-lg font-semibold mb-4 font-baskervville">Weekly Session Performance</h3>
-        
+      <CollapsibleSection id="session-performance" title="Weekly Session Performance">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left p-2 font-medium">Day</th>
-                <th className="text-left p-2 font-medium">Completed</th>
-                <th className="text-left p-2 font-medium">Cancelled</th>
-                <th className="text-left p-2 font-medium">No Show</th>
-                <th className="text-left p-2 font-medium">Success Rate</th>
+                <th className="text-left p-2 font-medium text-sm">Day</th>
+                <th className="text-left p-2 font-medium text-sm">Completed</th>
+                <th className="text-left p-2 font-medium text-sm">Cancelled</th>
+                <th className="text-left p-2 font-medium text-sm">No Show</th>
+                <th className="text-left p-2 font-medium text-sm">Success Rate</th>
               </tr>
             </thead>
             <tbody>
@@ -287,18 +357,18 @@ export default function Analytics({ stats, loading }: AnalyticsProps) {
                 
                 return (
                   <tr key={index} className="border-b border-border hover:bg-muted/50">
-                    <td className="p-2 font-medium">{day.day}</td>
+                    <td className="p-2 font-medium text-sm">{day.day}</td>
                     <td className="p-2">
-                      <span className="text-green-600 font-medium">{day.completed}</span>
+                      <span className="text-green-600 font-medium text-sm">{day.completed}</span>
                     </td>
                     <td className="p-2">
-                      <span className="text-red-600 font-medium">{day.cancelled}</span>
+                      <span className="text-red-600 font-medium text-sm">{day.cancelled}</span>
                     </td>
                     <td className="p-2">
-                      <span className="text-gray-600 font-medium">{day.noShow}</span>
+                      <span className="text-gray-600 font-medium text-sm">{day.noShow}</span>
                     </td>
                     <td className="p-2">
-                      <span className={`font-medium ${successRate >= 85 ? 'text-green-600' : successRate >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      <span className={`font-medium text-sm ${successRate >= 85 ? 'text-green-600' : successRate >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
                         {successRate}%
                       </span>
                     </td>
@@ -308,67 +378,64 @@ export default function Analytics({ stats, loading }: AnalyticsProps) {
             </tbody>
           </table>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Platform Health Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-card rounded-lg p-6 border border-border">
-          <h4 className="font-semibold mb-3">Platform Health</h4>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm">System Uptime</span>
-              <span className="text-sm font-medium text-green-600">99.9%</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <CollapsibleSection id="platform-health" title="Platform Health">
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm">System Uptime</span>
+              <span className="text-xs sm:text-sm font-medium text-green-600">99.9%</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm">API Response Time</span>
-              <span className="text-sm font-medium text-green-600">142ms</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm">API Response Time</span>
+              <span className="text-xs sm:text-sm font-medium text-green-600">142ms</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm">Error Rate</span>
-              <span className="text-sm font-medium text-green-600">0.01%</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm">Error Rate</span>
+              <span className="text-xs sm:text-sm font-medium text-green-600">0.01%</span>
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
-        <div className="bg-card rounded-lg p-6 border border-border">
-          <h4 className="font-semibold mb-3">User Engagement</h4>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm">Daily Active Users</span>
-              <span className="text-sm font-medium text-blue-600">
+        <CollapsibleSection id="user-engagement" title="User Engagement">
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm">Daily Active Users</span>
+              <span className="text-xs sm:text-sm font-medium text-blue-600">
                 {Math.round((stats?.totalUsers || 0) * 0.35).toLocaleString()}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm">Session Completion</span>
-              <span className="text-sm font-medium text-green-600">{stats?.completionRate || 0}%</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm">Session Completion</span>
+              <span className="text-xs sm:text-sm font-medium text-green-600">{stats?.completionRate || 0}%</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm">User Retention</span>
-              <span className="text-sm font-medium text-purple-600">78%</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm">User Retention</span>
+              <span className="text-xs sm:text-sm font-medium text-purple-600">78%</span>
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
-        <div className="bg-card rounded-lg p-6 border border-border">
-          <h4 className="font-semibold mb-3">Financial Metrics</h4>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm">Monthly Revenue</span>
-              <span className="text-sm font-medium text-emerald-600">
+        <CollapsibleSection id="financial-metrics" title="Financial Metrics">
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm">Monthly Revenue</span>
+              <span className="text-xs sm:text-sm font-medium text-emerald-600">
                 ${(stats?.totalRevenue || 0).toLocaleString()}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm">Avg. Session Value</span>
-              <span className="text-sm font-medium text-emerald-600">$65</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm">Avg. Session Value</span>
+              <span className="text-xs sm:text-sm font-medium text-emerald-600">$65</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm">Revenue Growth</span>
-              <span className="text-sm font-medium text-green-600">+{stats?.monthlyGrowth || 0}%</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm">Revenue Growth</span>
+              <span className="text-xs sm:text-sm font-medium text-green-600">+{stats?.monthlyGrowth || 0}%</span>
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
       </div>
     </div>
   );

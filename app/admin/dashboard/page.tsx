@@ -1,4 +1,4 @@
-// app/admin/dashboard/page.tsx
+// app/admin/dashboard/page.tsx - Enhanced Responsive Version
 'use client'
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -35,6 +35,24 @@ export default function AdminDashboardPage() {
     checkAuth();
   }, []);
 
+  // Handle responsive tab persistence
+  useEffect(() => {
+    // Save active tab to localStorage for persistence across sessions
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('adminActiveTab', activeTab);
+    }
+  }, [activeTab]);
+
+  // Restore active tab on load
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem('adminActiveTab');
+      if (savedTab && ['overview', 'users', 'verifications', 'sessions', 'analytics', 'settings'].includes(savedTab)) {
+        setActiveTab(savedTab);
+      }
+    }
+  }, []);
+
   const checkAuth = async () => {
     try {
       const response = await fetch('/api/admin/auth/me');
@@ -53,6 +71,10 @@ export default function AdminDashboardPage() {
   const handleLogout = async () => {
     try {
       await AdminApi.logout();
+      // Clear any stored state
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('adminActiveTab');
+      }
       router.push('/admin/login');
     } catch (error) {
       console.error('Logout failed:', error);
@@ -74,6 +96,17 @@ export default function AdminDashboardPage() {
       case 'sessions':
         adminData.loadSessions();
         break;
+      case 'analytics':
+        // Load analytics data if needed
+        break;
+      case 'settings':
+        // Load settings if needed
+        break;
+    }
+
+    // Smooth scroll to top on mobile when changing tabs
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -105,12 +138,37 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Handle mobile back button behavior
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      // Prevent default back behavior on mobile and show a confirmation
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        const shouldLeave = confirm('Are you sure you want to leave the admin dashboard?');
+        if (!shouldLeave) {
+          window.history.pushState(null, '', window.location.href);
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', handlePopState);
+      // Push initial state
+      window.history.pushState(null, '', window.location.href);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', handlePopState);
+      }
+    };
+  }, []);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground text-sm sm:text-base">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -131,7 +189,9 @@ export default function AdminDashboardPage() {
         onLogout={handleLogout}
       />
       
-      <main className="p-6 max-w-7xl mx-auto">
+      {/* Main Content with responsive padding */}
+      <main className="p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto">
+        {/* Content based on active tab */}
         {activeTab === 'overview' && (
           <Overview
             stats={adminData.stats}
@@ -192,17 +252,14 @@ export default function AdminDashboardPage() {
         )}
         
         {activeTab === 'analytics' && (
-          <div className="text-center py-12 text-muted-foreground">
-            <h3 className="text-lg font-medium mb-2">Analytics Dashboard</h3>
-            <p>Advanced analytics and reporting features coming soon...</p>
-          </div>
+          <Analytics
+            stats={adminData.stats}
+            loading={adminData.statsLoading}
+          />
         )}
         
         {activeTab === 'settings' && (
-          <div className="text-center py-12 text-muted-foreground">
-            <h3 className="text-lg font-medium mb-2">System Settings</h3>
-            <p>Administrative settings and configuration options coming soon...</p>
-          </div>
+          <Settings />
         )}
       </main>
 
@@ -225,6 +282,16 @@ export default function AdminDashboardPage() {
         }}
         onAction={handleVerificationAction}
       />
+
+      {/* Loading overlay for mobile when switching tabs */}
+      {adminData.refreshing && (
+        <div className="sm:hidden fixed inset-0 bg-black/20 flex items-center justify-center z-40">
+          <div className="bg-card rounded-lg p-6 shadow-lg">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground text-sm">Refreshing data...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

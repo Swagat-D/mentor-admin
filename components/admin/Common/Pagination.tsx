@@ -1,6 +1,5 @@
-// components/admin/Common/Pagination.tsx
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 
 interface PaginationProps {
   currentPage: number;
@@ -18,27 +17,36 @@ export default function Pagination({
   itemsPerPage 
 }: PaginationProps) {
   const getVisiblePages = () => {
-    const delta = 2;
+    const delta = 1; // Reduced for mobile
     const range = [];
     const rangeWithDots = [];
 
-    for (let i = Math.max(2, currentPage - delta); 
-         i <= Math.min(totalPages - 1, currentPage + delta); 
-         i++) {
-      range.push(i);
-    }
-
-    if (currentPage - delta > 2) {
-      rangeWithDots.push(1, '...');
-    } else {
+    // Always show first page
+    if (totalPages > 1) {
       rangeWithDots.push(1);
     }
 
-    rangeWithDots.push(...range);
+    // Calculate range around current page
+    const start = Math.max(2, currentPage - delta);
+    const end = Math.min(totalPages - 1, currentPage + delta);
 
-    if (currentPage + delta < totalPages - 1) {
-      rangeWithDots.push('...', totalPages);
-    } else if (totalPages > 1) {
+    // Add dots after first page if needed
+    if (start > 2) {
+      rangeWithDots.push('...');
+    }
+
+    // Add pages around current page
+    for (let i = start; i <= end; i++) {
+      rangeWithDots.push(i);
+    }
+
+    // Add dots before last page if needed
+    if (end < totalPages - 1) {
+      rangeWithDots.push('...');
+    }
+
+    // Always show last page if there's more than one page
+    if (totalPages > 1 && !rangeWithDots.includes(totalPages)) {
       rangeWithDots.push(totalPages);
     }
 
@@ -48,43 +56,52 @@ export default function Pagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-card border border-border rounded-lg">
-      <div className="flex-1 flex justify-between sm:hidden">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-card border border-border rounded-lg">
+      {/* Mobile: Simplified navigation */}
+      <div className="flex justify-between w-full sm:hidden">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="relative inline-flex items-center px-4 py-2 border border-border text-sm font-medium rounded-md text-foreground bg-background hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center px-3 py-2 border border-border text-sm font-medium rounded-md text-foreground bg-background hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
+          <ChevronLeft className="h-4 w-4 mr-1" />
           Previous
         </button>
+        
+        <div className="flex items-center px-3 py-2">
+          <span className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </span>
+        </div>
+        
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="ml-3 relative inline-flex items-center px-4 py-2 border border-border text-sm font-medium rounded-md text-foreground bg-background hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center px-3 py-2 border border-border text-sm font-medium rounded-md text-foreground bg-background hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Next
+          <ChevronRight className="h-4 w-4 ml-1" />
         </button>
       </div>
       
-      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+      {/* Desktop: Full pagination */}
+      <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm text-muted-foreground">
-            {totalItems && itemsPerPage && (
-              <>
-                Showing{' '}
-                <span className="font-medium">
-                  {(currentPage - 1) * itemsPerPage + 1}
-                </span>
-                {' '}to{' '}
-                <span className="font-medium">
-                  {Math.min(currentPage * itemsPerPage, totalItems)}
-                </span>
-                {' '}of{' '}
-                <span className="font-medium">{totalItems}</span>
-                {' '}results
-              </>
-            )}
-          </p>
+          {totalItems && itemsPerPage && (
+            <p className="text-sm text-muted-foreground">
+              Showing{' '}
+              <span className="font-medium">
+                {(currentPage - 1) * itemsPerPage + 1}
+              </span>
+              {' '}to{' '}
+              <span className="font-medium">
+                {Math.min(currentPage * itemsPerPage, totalItems)}
+              </span>
+              {' '}of{' '}
+              <span className="font-medium">{totalItems}</span>
+              {' '}results
+            </p>
+          )}
         </div>
         
         <div>
@@ -92,7 +109,7 @@ export default function Pagination({
             <button
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-border bg-background text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-border bg-background text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -102,7 +119,7 @@ export default function Pagination({
                 key={index}
                 onClick={() => typeof page === 'number' && onPageChange(page)}
                 disabled={page === '...'}
-                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${
                   page === currentPage
                     ? 'z-10 bg-primary border-primary text-primary-foreground'
                     : page === '...'
@@ -110,14 +127,14 @@ export default function Pagination({
                     : 'border-border bg-background text-foreground hover:bg-muted'
                 }`}
               >
-                {page}
+                {page === '...' ? <MoreHorizontal className="h-4 w-4" /> : page}
               </button>
             ))}
             
             <button
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-border bg-background text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-border bg-background text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="h-5 w-5" />
             </button>

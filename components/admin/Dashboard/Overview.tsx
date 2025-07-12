@@ -1,4 +1,3 @@
-// components/admin/Dashboard/Overview.tsx
 import React from 'react';
 import { 
   Users, 
@@ -24,8 +23,8 @@ interface OverviewProps {
 export default function Overview({ stats, loading, onNavigate }: OverviewProps) {
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Main Stats Grid - Responsive */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+      {/* Main Stats Grid - Enhanced responsive layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           title="Total Users"
           value={stats?.totalUsers || 0}
@@ -59,8 +58,8 @@ export default function Overview({ stats, loading, onNavigate }: OverviewProps) 
         />
       </div>
 
-      {/* Secondary Stats Grid - Responsive */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+      {/* Secondary Stats Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           title="Completion Rate"
           value={stats ? `${stats.completionRate}%` : '0%'}
@@ -91,8 +90,8 @@ export default function Overview({ stats, loading, onNavigate }: OverviewProps) 
         />
       </div>
 
-      {/* Quick Actions and System Health - Responsive Layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+      {/* Quick Actions and System Health - Enhanced responsive layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Quick Actions */}
         <div className="bg-card rounded-lg p-4 sm:p-6 border border-border">
           <h3 className="text-lg font-semibold mb-4 font-baskervville">Quick Actions</h3>
@@ -215,7 +214,7 @@ export default function Overview({ stats, loading, onNavigate }: OverviewProps) 
         </div>
       </div>
 
-      {/* Recent Activity - Mobile Optimized */}
+      {/* Recent Activity - Enhanced mobile layout */}
       <div className="bg-card rounded-lg p-4 sm:p-6 border border-border">
         <h3 className="text-lg font-semibold mb-4 font-baskervville">Recent Platform Activity</h3>
         <div className="space-y-3">
