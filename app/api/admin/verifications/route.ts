@@ -1,4 +1,4 @@
-// app/api/admin/verifications/route.ts
+// app/api/admin/verifications/route.ts - Fixed with All Applications Support
 import { NextResponse } from 'next/server';
 import { withAdminAuth, AdminAuthenticatedRequest } from '@/lib/auth/adminMiddleware';
 import { connectToDatabase } from '@/lib/database/connection';
@@ -6,19 +6,24 @@ import { connectToDatabase } from '@/lib/database/connection';
 export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
   try {
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status') || 'pending';
+    const status = searchParams.get('status') || 'all';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const skip = (page - 1) * limit;
 
     const { db } = await connectToDatabase();
     const mentorVerificationsCollection = db.collection('mentorVerifications');
-    const usersCollection = db.collection('users');
-    const mentorProfilesCollection = db.collection('mentorProfiles');
+
+    // Build match condition based on status
+    let matchCondition: any = {};
+    
+    if (status !== 'all') {
+      matchCondition.status = status;
+    }
 
     // Build aggregation pipeline
     const pipeline = [
-      { $match: { status } },
+      { $match: matchCondition },
       {
         $lookup: {
           from: 'users',
@@ -41,18 +46,28 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
         $project: {
           'user.passwordHash': 0,
           'user.otpCode': 0,
-          'user.passwordResetOTP': 0
+          'user.passwordResetOTP': 0,
+          'user.adminOTP': 0,
+          'user.adminOTPExpires': 0
         }
       },
-      { $sort: { createdAt: 1 } },
+      { $sort: { createdAt: -1 } }, // Sort by creation date, newest first
       { $skip: skip },
       { $limit: limit }
     ];
 
-    const [verifications, total] = await Promise.all([
+    // Count pipeline for pagination
+    const countPipeline = [
+      { $match: matchCondition },
+      { $count: "total" }
+    ];
+
+    const [verifications, countResult] = await Promise.all([
       mentorVerificationsCollection.aggregate(pipeline).toArray(),
-      mentorVerificationsCollection.countDocuments({ status })
+      mentorVerificationsCollection.aggregate(countPipeline).toArray()
     ]);
+
+    const total = countResult[0]?.total || 0;
 
     return NextResponse.json({
       success: true,

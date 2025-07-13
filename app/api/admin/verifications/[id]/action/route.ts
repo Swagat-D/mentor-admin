@@ -1,4 +1,4 @@
-// app/api/admin/verifications/[id]/action/route.ts
+// app/api/admin/verifications/[id]/action/route.ts - Enhanced with Notifications
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth, AdminAuthenticatedRequest } from '@/lib/auth/adminMiddleware';
 import { connectToDatabase } from '@/lib/database/connection';
@@ -11,6 +11,16 @@ const verificationActionSchema = z.object({
   notes: z.string().optional(),
   requestedInfo: z.string().optional(),
 });
+
+interface NotificationData {
+  userId: ObjectId;
+  type: 'verification_approved' | 'verification_rejected' | 'verification_info_requested';
+  title: string;
+  message: string;
+  data?: any;
+  read: boolean;
+  createdAt: Date;
+  }
 
 export const POST = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
   try {
@@ -27,6 +37,7 @@ export const POST = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
     const mentorVerificationsCollection = db.collection('mentorVerifications');
     const usersCollection = db.collection('users');
     const mentorProfilesCollection = db.collection('mentorProfiles');
+    const notificationsCollection = db.collection('notifications');
 
     // Get verification record
     const verification = await mentorVerificationsCollection.findOne({
@@ -58,6 +69,8 @@ export const POST = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
       reviewedAt: new Date(),
     };
 
+    let notificationData: NotificationData | undefined;
+
     // Process different actions
     if (action === 'approve') {
       updateData.status = 'approved';
@@ -74,6 +87,21 @@ export const POST = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
           }
         }
       );
+
+      // Create notification
+      notificationData = {
+        userId: verification.userId,
+        type: 'verification_approved',
+        title: 'Application Approved! 🎉',
+        message: 'Congratulations! Your mentor application has been approved. You can now access your mentor dashboard and start connecting with students.',
+        data: {
+          verificationId: verification._id,
+          action: 'approved',
+          notes: notes
+        },
+        read: false,
+        createdAt: new Date()
+      };
 
       // Send approval email
       try {
@@ -92,6 +120,21 @@ export const POST = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
       updateData.status = 'rejected';
       updateData.rejectionReason = notes;
 
+      // Create notification
+      notificationData = {
+        userId: verification.userId,
+        type: 'verification_rejected',
+        title: 'Application Update Required',
+        message: `Your mentor application needs attention: ${notes || 'Please review the feedback and consider reapplying.'}`,
+        data: {
+          verificationId: verification._id,
+          action: 'rejected',
+          notes: notes
+        },
+        read: false,
+        createdAt: new Date()
+      };
+
       // Send rejection email
       try {
         console.log('Sending rejection email to:', user.email);
@@ -109,6 +152,22 @@ export const POST = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
       updateData.status = 'info_requested';
       updateData.requestedInfo = requestedInfo;
       updateData.notes = notes;
+
+      // Create notification
+      notificationData = {
+        userId: verification.userId,
+        type: 'verification_info_requested',
+        title: 'Additional Information Required',
+        message: `Please provide additional information for your mentor application: ${requestedInfo || 'Additional documentation needed.'}`,
+        data: {
+          verificationId: verification._id,
+          action: 'request_info',
+          requestedInfo: requestedInfo,
+          notes: notes
+        },
+        read: false,
+        createdAt: new Date()
+      };
 
       // Send info request email
       try {
@@ -137,10 +196,25 @@ export const POST = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
       );
     }
 
+    // Create notification
+    if (notificationData) {
+      try {
+        await notificationsCollection.insertOne(notificationData);
+        console.log('Notification created successfully');
+      } catch (notificationError) {
+        console.error('Failed to create notification:', notificationError);
+        // Don't fail the operation if notification creation fails
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Verification ${action}d successfully`,
-      data: { action, verificationId }
+      message: `Verification ${action.replace('_', ' ')}d successfully`,
+      data: { 
+        action, 
+        verificationId,
+        notificationSent: true 
+      }
     });
 
   } catch (error: any) {
@@ -158,7 +232,7 @@ export const POST = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
     }
 
     return NextResponse.json(
-      { success: false, message: 'Internal server error', error: error.message },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }

@@ -1,78 +1,42 @@
-// hooks/useAdminData.ts
-import { useState, useEffect, useCallback } from 'react';
+// hooks/useAdminData.ts - Fixed Admin Data Hook
+import { useState, useCallback } from 'react';
 import { AdminApi } from '@/lib/admin/adminApi';
 import { DashboardStats, UserListItem, VerificationItem, SessionItem } from '@/types/admin';
 
-interface UseAdminDataReturn {
-  // Data
-  stats: DashboardStats | null;
-  users: UserListItem[];
-  verifications: VerificationItem[];
-  sessions: SessionItem[];
-  
-  // Loading states
-  statsLoading: boolean;
-  usersLoading: boolean;
-  verificationsLoading: boolean;
-  sessionsLoading: boolean;
-  refreshing: boolean;
-  
-  // Pagination
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  
-  // Filters
-  searchTerm: string;
-  filterRole: string;
-  filterStatus: string;
-  
-  // Actions
-  setCurrentPage: (page: number) => void;
-  setSearchTerm: (term: string) => void;
-  setFilterRole: (role: string) => void;
-  setFilterStatus: (status: string) => void;
-  loadStats: () => Promise<void>;
-  loadUsers: () => Promise<void>;
-  loadVerifications: () => Promise<void>;
-  loadSessions: () => Promise<void>;
-  refreshAll: () => Promise<void>;
-  updateUser: (userId: string, updates: any) => Promise<void>;
-  processVerification: (verificationId: string, action: string, data?: any) => Promise<void>;
-}
-
-export function useAdminData(): UseAdminDataReturn {
-  // Data states
+export function useAdminData() {
+  // Stats
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [users, setUsers] = useState<UserListItem[]>([]);
-  const [verifications, setVerifications] = useState<VerificationItem[]>([]);
-  const [sessions, setSessions] = useState<SessionItem[]>([]);
-  
-  // Loading states
   const [statsLoading, setStatsLoading] = useState(false);
+
+  // Users
+  const [users, setUsers] = useState<UserListItem[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+
+  // Verifications
+  const [verifications, setVerifications] = useState<VerificationItem[]>([]);
   const [verificationsLoading, setVerificationsLoading] = useState(false);
+
+  // Sessions
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  
-  // Pagination states
+
+  // Filters and pagination
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterRole, setFilterRole] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all'); // Default to 'all' for verifications
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  
-  // Filter states
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  
-  const itemsPerPage = 20;
+
+  // Global loading state
+  const [refreshing, setRefreshing] = useState(false);
 
   // Load dashboard stats
   const loadStats = useCallback(async () => {
+    setStatsLoading(true);
     try {
-      setStatsLoading(true);
-      const statsData = await AdminApi.getDashboardStats();
-      setStats(statsData);
+      const data = await AdminApi.getDashboardStats();
+      setStats(data);
     } catch (error) {
       console.error('Failed to load stats:', error);
     } finally {
@@ -82,20 +46,21 @@ export function useAdminData(): UseAdminDataReturn {
 
   // Load users
   const loadUsers = useCallback(async () => {
+    setUsersLoading(true);
     try {
-      setUsersLoading(true);
-      const params = {
+      const params: any = {
         page: currentPage,
-        limit: itemsPerPage,
-        ...(searchTerm && { search: searchTerm }),
-        ...(filterRole !== 'all' && { role: filterRole }),
-        ...(filterStatus !== 'all' && { status: filterStatus })
+        limit: 20
       };
-      
-      const { users: usersData, pagination } = await AdminApi.getUsers(params);
-      setUsers(usersData);
-      setTotalPages(pagination.pages);
-      setTotalItems(pagination.total);
+
+      if (searchTerm) params.search = searchTerm;
+      if (filterRole !== 'all') params.role = filterRole;
+      if (filterStatus !== 'all') params.status = filterStatus;
+
+      const data = await AdminApi.getUsers(params);
+      setUsers(data.users);
+      setTotalPages(data.pagination.pages);
+      setTotalItems(data.pagination.total);
     } catch (error) {
       console.error('Failed to load users:', error);
     } finally {
@@ -105,20 +70,25 @@ export function useAdminData(): UseAdminDataReturn {
 
   // Load verifications
   const loadVerifications = useCallback(async () => {
+    setVerificationsLoading(true);
     try {
-      setVerificationsLoading(true);
-      const params = {
+      const params: any = {
         page: currentPage,
-        limit: itemsPerPage,
-        status: filterStatus === 'all' ? 'pending' : filterStatus
+        limit: 20
       };
-      
-      const { verifications: verificationsData, pagination } = await AdminApi.getVerifications(params);
-      setVerifications(verificationsData);
-      setTotalPages(pagination.pages);
-      setTotalItems(pagination.total);
+
+      // Only add status filter if it's not 'all'
+      if (filterStatus !== 'all') {
+        params.status = filterStatus;
+      }
+
+      const data = await AdminApi.getVerifications(params);
+      setVerifications(data.verifications);
+      setTotalPages(data.pagination.pages);
+      setTotalItems(data.pagination.total);
     } catch (error) {
       console.error('Failed to load verifications:', error);
+      setVerifications([]);
     } finally {
       setVerificationsLoading(false);
     }
@@ -126,18 +96,19 @@ export function useAdminData(): UseAdminDataReturn {
 
   // Load sessions
   const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
     try {
-      setSessionsLoading(true);
-      const params = {
+      const params: any = {
         page: currentPage,
-        limit: itemsPerPage,
-        ...(filterStatus !== 'all' && { status: filterStatus })
+        limit: 20
       };
-      
-      const { sessions: sessionsData, pagination } = await AdminApi.getSessions(params);
-      setSessions(sessionsData);
-      setTotalPages(pagination.pages);
-      setTotalItems(pagination.total);
+
+      if (filterStatus !== 'all') params.status = filterStatus;
+
+      const data = await AdminApi.getSessions(params);
+      setSessions(data.sessions);
+      setTotalPages(data.pagination.pages);
+      setTotalItems(data.pagination.total);
     } catch (error) {
       console.error('Failed to load sessions:', error);
     } finally {
@@ -145,23 +116,12 @@ export function useAdminData(): UseAdminDataReturn {
     }
   }, [currentPage, filterStatus]);
 
-  // Refresh all data
-  const refreshAll = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([
-      loadStats(),
-      loadUsers(),
-      loadVerifications(),
-      loadSessions()
-    ]);
-    setRefreshing(false);
-  }, [loadStats, loadUsers, loadVerifications, loadSessions]);
-
   // Update user
   const updateUser = useCallback(async (userId: string, updates: any) => {
     try {
       await AdminApi.updateUser(userId, updates);
-      await loadUsers(); // Refresh users list
+      // Reload users to reflect changes
+      await loadUsers();
     } catch (error) {
       console.error('Failed to update user:', error);
       throw error;
@@ -172,23 +132,48 @@ export function useAdminData(): UseAdminDataReturn {
   const processVerification = useCallback(async (verificationId: string, action: string, data?: any) => {
     try {
       await AdminApi.processVerification(verificationId, action, data);
-      await loadVerifications(); // Refresh verifications list
-      await loadStats(); // Refresh stats to update pending count
+      // Reload verifications to reflect changes
+      await loadVerifications();
+      // Also reload stats to update counts
+      await loadStats();
     } catch (error) {
       console.error('Failed to process verification:', error);
       throw error;
     }
   }, [loadVerifications, loadStats]);
 
-  // Load initial stats on mount
-  useEffect(() => {
-    loadStats();
-  }, [loadStats]);
+  // Refresh all data
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        loadStats(),
+        loadUsers(),
+        loadVerifications(),
+        loadSessions()
+      ]);
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadStats, loadUsers, loadVerifications, loadSessions]);
 
-  // Reset page when filters change
-  useEffect(() => {
+  // Reset pagination when filters change
+  const handleFilterChange = useCallback((newFilter: string, type: 'role' | 'status') => {
     setCurrentPage(1);
-  }, [searchTerm, filterRole, filterStatus]);
+    if (type === 'role') {
+      setFilterRole(newFilter);
+    } else {
+      setFilterStatus(newFilter);
+    }
+  }, []);
+
+  // Reset pagination when search changes
+  const handleSearchChange = useCallback((newSearch: string) => {
+    setCurrentPage(1);
+    setSearchTerm(newSearch);
+  }, []);
 
   return {
     // Data
@@ -196,35 +181,35 @@ export function useAdminData(): UseAdminDataReturn {
     users,
     verifications,
     sessions,
-    
+
     // Loading states
     statsLoading,
     usersLoading,
     verificationsLoading,
     sessionsLoading,
     refreshing,
-    
-    // Pagination
-    currentPage,
-    totalPages,
-    totalItems,
-    
-    // Filters
+
+    // Filters and pagination
     searchTerm,
     filterRole,
     filterStatus,
-    
-    // Actions
+    currentPage,
+    totalPages,
+    totalItems,
+
+    // Setters with pagination reset
+    setSearchTerm: handleSearchChange,
+    setFilterRole: (role: string) => handleFilterChange(role, 'role'),
+    setFilterStatus: (status: string) => handleFilterChange(status, 'status'),
     setCurrentPage,
-    setSearchTerm,
-    setFilterRole,
-    setFilterStatus,
+
+    // Actions
     loadStats,
     loadUsers,
     loadVerifications,
     loadSessions,
-    refreshAll,
     updateUser,
     processVerification,
+    refreshAll
   };
 }

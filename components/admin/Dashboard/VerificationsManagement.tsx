@@ -1,4 +1,4 @@
-// components/admin/Dashboard/VerificationsManagement.tsx - Enhanced Responsive Version
+// components/admin/Dashboard/VerificationsManagement.tsx - Fixed with All Applications Default
 import React, { useEffect, useState } from 'react';
 import { 
   User, 
@@ -11,7 +11,6 @@ import {
   Calendar,
   Star,
   Globe,
-  Filter,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -46,12 +45,26 @@ export default function VerificationsManagement({
   loadVerifications
 }: VerificationsManagementProps) {
   
-  const [showFilters, setShowFilters] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [allVerifications, setAllVerifications] = useState<VerificationItem[]>([]);
+
+  // Set default filter to 'all' if not set
+  useEffect(() => {
+    if (!filterStatus || filterStatus === '') {
+      onFilterStatusChange('all');
+    }
+  }, []);
 
   useEffect(() => {
     loadVerifications();
-  }, [loadVerifications]);
+  }, [filterStatus, currentPage]);
+
+  // Store all verifications for counting
+  useEffect(() => {
+    if (filterStatus === 'all') {
+      setAllVerifications(verifications);
+    }
+  }, [verifications, filterStatus]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -93,6 +106,41 @@ export default function VerificationsManagement({
     setExpandedCards(newExpanded);
   };
 
+  // Calculate status counts from current data based on filter
+  const getStatusCounts = () => {
+    if (filterStatus === 'all') {
+      // When showing all, count from the current verifications
+      return {
+        total: verifications.length,
+        pending: verifications.filter(v => v.status === 'pending').length,
+        approved: verifications.filter(v => v.status === 'approved').length,
+        rejected: verifications.filter(v => v.status === 'rejected').length,
+        info_requested: verifications.filter(v => v.status === 'info_requested').length
+      };
+    } else {
+      // When filtered, show the count for that specific status
+      return {
+        total: totalItems,
+        pending: filterStatus === 'pending' ? totalItems : 0,
+        approved: filterStatus === 'approved' ? totalItems : 0,
+        rejected: filterStatus === 'rejected' ? totalItems : 0,
+        info_requested: filterStatus === 'info_requested' ? totalItems : 0
+      };
+    }
+  };
+
+  const statusCounts = getStatusCounts();
+
+  // Filter verifications based on current filter
+  const getFilteredVerifications = () => {
+    if (filterStatus === 'all') {
+      return verifications;
+    }
+    return verifications.filter(v => v.status === filterStatus);
+  };
+
+  const filteredVerifications = getFilteredVerifications();
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -105,59 +153,49 @@ export default function VerificationsManagement({
         </div>
         
         <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
-          {/* Mobile Filter Toggle */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="sm:hidden flex items-center justify-center space-x-2 px-4 py-2 border border-border rounded-md bg-input text-sm"
-          >
-            <Filter className="h-4 w-4" />
-            <span>Filter</span>
-          </button>
-
-          {/* Desktop Filter */}
-          <select 
-            value={filterStatus} 
-            onChange={(e) => onFilterStatusChange(e.target.value)}
-            className="hidden sm:block px-4 py-2 border border-border rounded-md bg-input focus:outline-none focus:ring-2 focus:ring-ring text-sm min-w-[160px]"
-          >
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="info_requested">Info Requested</option>
-          </select>
-
           <div className="text-xs sm:text-sm text-muted-foreground">
-            {totalItems} applications
+            {filterStatus === 'all' ? `${statusCounts.total} total applications` : `${totalItems} ${filterStatus.replace('_', ' ')} applications`}
           </div>
         </div>
       </div>
 
-      {/* Mobile Filters */}
-      {showFilters && (
-        <div className="sm:hidden">
-          <select 
-            value={filterStatus} 
-            onChange={(e) => onFilterStatusChange(e.target.value)}
-            className="w-full px-4 py-2 border border-border rounded-md bg-input focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-          >
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="info_requested">Info Requested</option>
-          </select>
-        </div>
-      )}
+      {/* Filter Dropdown - Always visible, no toggle button */}
+      <div className="w-full">
+        <select 
+          value={filterStatus} 
+          onChange={(e) => onFilterStatusChange(e.target.value)}
+          className="w-full sm:w-auto px-4 py-2 border border-border rounded-md bg-input focus:outline-none focus:ring-2 focus:ring-ring text-sm min-w-[160px]"
+        >
+          <option value="all">All Applications</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="info_requested">Info Requested</option>
+        </select>
+      </div>
 
       {/* Status Summary - Enhanced responsive grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="bg-card p-3 sm:p-4 rounded-lg border border-border">
+          <div className="flex items-center space-x-2">
+            <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
+            <div>
+              <div className="text-lg sm:text-2xl font-bold text-gray-600">
+                {statusCounts.total}
+              </div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Total</div>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-card p-3 sm:p-4 rounded-lg border border-border">
           <div className="flex items-center space-x-2">
             <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
             <div>
               <div className="text-lg sm:text-2xl font-bold text-yellow-600">
-                {verifications.filter(v => v.status === 'pending').length}
+                {statusCounts.pending}
               </div>
-              <div className="text-xs sm:text-sm text-muted-foreground">Pending Review</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Pending</div>
             </div>
           </div>
         </div>
@@ -167,7 +205,7 @@ export default function VerificationsManagement({
             <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
             <div>
               <div className="text-lg sm:text-2xl font-bold text-green-600">
-                {verifications.filter(v => v.status === 'approved').length}
+                {statusCounts.approved}
               </div>
               <div className="text-xs sm:text-sm text-muted-foreground">Approved</div>
             </div>
@@ -179,19 +217,19 @@ export default function VerificationsManagement({
             <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
             <div>
               <div className="text-lg sm:text-2xl font-bold text-red-600">
-                {verifications.filter(v => v.status === 'rejected').length}
+                {statusCounts.rejected}
               </div>
               <div className="text-xs sm:text-sm text-muted-foreground">Rejected</div>
             </div>
           </div>
         </div>
         
-        <div className="bg-card p-3 sm:p-4 rounded-lg border border-border col-span-2 sm:col-span-2 lg:col-span-1">
+        <div className="bg-card p-3 sm:p-4 rounded-lg border border-border col-span-2 sm:col-span-3 lg:col-span-1">
           <div className="flex items-center space-x-2">
             <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
             <div>
               <div className="text-lg sm:text-2xl font-bold text-blue-600">
-                {verifications.filter(v => v.status === 'info_requested').length}
+                {statusCounts.info_requested}
               </div>
               <div className="text-xs sm:text-sm text-muted-foreground">Info Requested</div>
             </div>
@@ -207,7 +245,7 @@ export default function VerificationsManagement({
         </div>
       ) : (
         <div className="space-y-3 sm:space-y-4">
-          {verifications.map((verification) => {
+          {filteredVerifications.map((verification) => {
             const isExpanded = expandedCards.has(verification._id);
             
             return (
@@ -228,7 +266,7 @@ export default function VerificationsManagement({
                         </p>
                         
                         {/* Mobile: Show basic info */}
-                        <div className="block sm:hidden mt-2 space-y-1">
+                        <div className="mt-2 space-y-1">
                           {verification.profile?.location && (
                             <div className="flex items-center text-xs text-muted-foreground">
                               <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
@@ -346,9 +384,11 @@ export default function VerificationsManagement({
                     </div>
                   )}
 
-                  {/* Bio Preview - Desktop only or expanded mobile */}
-                  {verification.profile?.bio && (isExpanded || window.innerWidth >= 640) && (
-                    <div className="mb-4 p-3 bg-muted/50 rounded-md">
+                  {/* Bio Preview - Desktop always show, mobile show when expanded */}
+                  {verification.profile?.bio && (
+                    <div className={`mb-4 p-3 bg-muted/50 rounded-md ${
+                      typeof window !== 'undefined' && window.innerWidth >= 640 ? 'block' : (isExpanded ? 'block' : 'hidden')
+                    }`}>
                       <span className="text-xs sm:text-sm text-muted-foreground block mb-1">Bio:</span>
                       <p className="text-xs sm:text-sm line-clamp-2">{verification.profile.bio}</p>
                     </div>
@@ -363,6 +403,7 @@ export default function VerificationsManagement({
                       Review Application
                     </button>
                     
+                    {/* Show action buttons based on status */}
                     {verification.status === 'pending' && (
                       <>
                         {/* Desktop: Show all buttons */}
@@ -428,11 +469,56 @@ export default function VerificationsManagement({
                         </div>
                       </>
                     )}
-                    
+
                     {verification.status === 'info_requested' && (
-                      <div className="bg-blue-50 text-blue-800 px-3 py-2 rounded text-xs sm:text-sm flex-1 sm:flex-none text-center">
-                        Waiting for additional information from applicant
-                      </div>
+                      <>
+                        {/* Desktop: Show approve/reject buttons for info requested */}
+                        <div className="hidden sm:flex sm:space-x-3">
+                          <button
+                            onClick={() => onQuickAction(verification._id, 'approve')}
+                            className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 transition-colors flex items-center space-x-1"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            <span>Approve Now</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => onQuickAction(verification._id, 'reject', { 
+                              notes: 'Application rejected after info request' 
+                            })}
+                            className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors flex items-center space-x-1"
+                          >
+                            <XCircle className="h-4 w-4" />
+                            <span>Reject</span>
+                          </button>
+                          
+                          <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded text-sm flex items-center space-x-1">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span>Waiting for info</span>
+                          </div>
+                        </div>
+
+                        {/* Mobile: Compact buttons for info requested */}
+                        <div className="sm:hidden flex space-x-2 w-full">
+                          <button
+                            onClick={() => onQuickAction(verification._id, 'approve')}
+                            className="bg-green-600 text-white px-3 py-2 rounded text-xs hover:bg-green-700 transition-colors flex items-center justify-center space-x-1 flex-1"
+                          >
+                            <CheckCircle className="h-3 w-3" />
+                            <span>Approve</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => onQuickAction(verification._id, 'reject', { 
+                              notes: 'Application rejected after info request' 
+                            })}
+                            className="bg-red-600 text-white px-3 py-2 rounded text-xs hover:bg-red-700 transition-colors flex items-center justify-center space-x-1 flex-1"
+                          >
+                            <XCircle className="h-3 w-3" />
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      </>
                     )}
                     
                     {verification.status === 'approved' && (
@@ -454,14 +540,16 @@ export default function VerificationsManagement({
             );
           })}
           
-          {verifications.length === 0 && !loading && (
+          {filteredVerifications.length === 0 && !loading && (
             <div className="bg-card rounded-lg p-8 text-center">
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No verifications found</h3>
               <p className="text-muted-foreground">
-                {filterStatus === 'pending' 
+                {filterStatus === 'all' 
+                  ? 'No applications found.'
+                  : filterStatus === 'pending' 
                   ? 'No pending verifications at the moment.'
-                  : `No ${filterStatus} verifications found.`
+                  : `No ${filterStatus.replace('_', ' ')} verifications found.`
                 }
               </p>
             </div>
