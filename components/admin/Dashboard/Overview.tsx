@@ -42,7 +42,7 @@ interface OverviewData {
     userGrowth: number;
     sessionGrowth: number;
     revenueGrowth: number;
-    completionRate: number;
+    completionRate: number | null;
   };
   quickActions: {
     pendingVerifications: number;
@@ -201,8 +201,7 @@ export default function Overview({ stats, loading, onNavigate }: OverviewProps) 
       <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           title="Completion Rate"
-          value={overviewData ? `${overviewData.stats.completionRate}%` : (stats ? `${stats.completionRate}%` : '0%')}
-          icon={CheckCircle}
+          value={overviewData ? `${overviewData.stats.completionRate ?? 0}%` : (stats ? `${stats.completionRate ?? 0}%` : '0%')}          icon={CheckCircle}
           color="text-green-600"
           loading={overviewLoading || loading}
         />

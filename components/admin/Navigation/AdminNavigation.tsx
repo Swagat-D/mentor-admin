@@ -1,4 +1,3 @@
-// components/admin/Navigation/AdminNavigation.tsx
 'use client'
 import React, { useState } from 'react';
 import { 
@@ -12,13 +11,15 @@ import {
   Bell,
   LogOut,
   Menu,
-  X
+  X,
+  Badge
 } from 'lucide-react';
 
 interface NavigationProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   pendingVerifications: number;
+  unreadNotifications: number;
   refreshing: boolean;
   onRefresh: () => void;
   onLogout: () => void;
@@ -28,6 +29,7 @@ export default function AdminNavigation({
   activeTab, 
   setActiveTab, 
   pendingVerifications, 
+  unreadNotifications,
   refreshing, 
   onRefresh,
   onLogout 
@@ -39,6 +41,7 @@ export default function AdminNavigation({
     { id: 'users', label: 'Users', icon: Users },
     { id: 'verifications', label: 'Verifications', icon: Shield },
     { id: 'sessions', label: 'Sessions', icon: Calendar },
+    {id: 'notifications', label: 'Notifications', icon: Bell, Badge: unreadNotifications > 0 ? unreadNotifications : undefined},
     { id: 'analytics', label: 'Analytics', icon: Activity },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
@@ -134,15 +137,6 @@ export default function AdminNavigation({
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
-            
-            <div className="relative">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              {pendingVerifications > 0 && (
-                <div className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                  {pendingVerifications > 9 ? '9+' : pendingVerifications}
-                </div>
-              )}
-            </div>
             
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
