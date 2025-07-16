@@ -4,6 +4,9 @@ import { withAdminAuth, AdminAuthenticatedRequest } from '@/lib/auth/adminMiddle
 import { connectToDatabase } from '@/lib/database/connection';
 import { ObjectId } from 'mongodb';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
   try {
     const { db } = await connectToDatabase();

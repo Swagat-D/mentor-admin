@@ -12,6 +12,9 @@ const updateUserSchema = z.object({
   lastName: z.string().optional(),
 });
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
   try {
     const url = new URL(req.url);

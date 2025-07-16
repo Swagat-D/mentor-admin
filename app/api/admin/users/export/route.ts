@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth, AdminAuthenticatedRequest } from '@/lib/auth/adminMiddleware';
 import { connectToDatabase } from '@/lib/database/connection';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
   try {
     const { searchParams } = new URL(req.url);

@@ -5,6 +5,9 @@ import { connectToDatabase } from '@/lib/database/connection';
 import { ObjectId } from 'mongodb';
 import { EmailService } from '@/lib/services/email.service';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export const POST = withAuth(async (req: AuthenticatedRequest) => {
   try {
     const body = await req.json();

@@ -16,6 +16,9 @@ const adminOTPVerifySchema = z.object({
   otp: z.string().length(6, 'OTP must be 6 digits'),
 });
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

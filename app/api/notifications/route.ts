@@ -4,6 +4,9 @@ import { withAuth, AuthenticatedRequest } from '@/lib/auth/middleware';
 import { connectToDatabase } from '@/lib/database/connection';
 import { ObjectId } from 'mongodb';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export const GET = withAuth(async (req: AuthenticatedRequest) => {
   try {
     const { searchParams } = new URL(req.url);

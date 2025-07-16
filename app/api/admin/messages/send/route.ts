@@ -11,6 +11,9 @@ const sendMessageSchema = z.object({
   message: z.string().min(1, 'Message content is required').max(500, 'Message too long'),
 });
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export const POST = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
   try {
     const body = await req.json();

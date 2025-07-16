@@ -13,6 +13,9 @@ const nextConfig = {
       },
     ],
   },
+  outputFileTracing: false,
+  output: 'standalone',
+  
   async rewrites() {
     return [
       {

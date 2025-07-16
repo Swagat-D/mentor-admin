@@ -12,6 +12,9 @@ const verificationActionSchema = z.object({
   requestedInfo: z.string().optional(),
 });
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export const POST = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
   try {
     const url = new URL(req.url);

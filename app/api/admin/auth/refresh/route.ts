@@ -3,6 +3,9 @@ import { JWTUtil } from '@/lib/auth/jwt';
 import { connectToDatabase } from '@/lib/database/connection';
 import { ObjectId } from 'mongodb';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const refreshToken = req.cookies.get('adminRefreshToken')?.value;
