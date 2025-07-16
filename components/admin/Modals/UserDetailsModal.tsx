@@ -18,6 +18,41 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [updating, setUpdating] = useState(false)
+  const [showMessageModal, setShowMessageModal] = useState(false)
+  const [messageContent, setMessageContent] = useState('')
+  const [sendingMessage, setSendingMessage] = useState(false)
+
+  const sendMessage = async () => {
+    if (!messageContent.trim() || !userId) return
+    
+    setSendingMessage(true)
+    try {
+      const response = await fetch('/api/admin/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          message: messageContent.trim()
+        }),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setMessageContent('')
+        setShowMessageModal(false)
+        alert('Message sent successfully!')
+      } else {
+        alert('Failed to send message: ' + data.message)
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      alert('Failed to send message. Please try again.')
+    } finally {
+      setSendingMessage(false)
+    }
+  }
 
   useEffect(() => {
     if (userId && isOpen) {
@@ -217,7 +252,9 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
                 >
                   {updating ? 'Updating...' : (userDetails.user.isActive ? 'Deactivate' : 'Activate')}
                 </button>
-                <button className="border border-border px-4 py-2 rounded text-sm hover:bg-muted transition-colors">
+                <button 
+                  onClick={() => setShowMessageModal(true)}
+                  className="border border-border px-4 py-2 rounded text-sm hover:bg-muted transition-colors">
                   Send Message
                 </button>
                 <button className="text-primary hover:text-primary/80 text-sm">
@@ -232,6 +269,91 @@ export default function UserDetailsModal({ userId, isOpen, onClose }: UserDetail
           )}
         </div>
       </div>
+
+      {/* Message Modal */}
+      {showMessageModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-card rounded-lg border border-border w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="text-lg font-semibold">Send Message</h3>
+              <button
+                onClick={() => {
+                  setShowMessageModal(false)
+                  setMessageContent('')
+                }}
+                className="text-muted-foreground hover:text-foreground p-1"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Send message to: {userDetails?.user.firstName} {userDetails?.user.lastName}
+                </label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Email: {userDetails?.user.email}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Message Content <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={messageContent}
+                  onChange={(e) => setMessageContent(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md bg-input focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  rows={4}
+                  placeholder="Type your message here..."
+                  maxLength={500}
+                />
+                <div className="text-xs text-muted-foreground mt-1">
+                  {messageContent.length}/500 characters
+                </div>
+              </div>
+              
+              <div className="bg-muted/50 p-3 rounded-md">
+                <p className="text-xs text-muted-foreground">
+                  This message will be sent via email and added to the user's notifications.
+                </p>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={sendMessage}
+                  disabled={sendingMessage || !messageContent.trim()}
+                  className="bg-primary text-primary-foreground px-4 py-2 rounded text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 flex-1"
+                >
+                  {sendingMessage ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4" />
+                      <span>Send Message</span>
+                    </>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setShowMessageModal(false)
+                    setMessageContent('')
+                  }}
+                  disabled={sendingMessage}
+                  className="border border-border px-4 py-2 rounded text-sm hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

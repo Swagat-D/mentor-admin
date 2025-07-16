@@ -12,7 +12,7 @@ export class EmailService {
     },
   })
 
-  private static async sendEmail(to: string, subject: string, html: string): Promise<void> {
+  private static async sendEmail(to: string, subject: string, html: string, text?: string): Promise<void> {
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
       console.log('Email not configured, skipping email send:', { to, subject })
       return
@@ -24,6 +24,7 @@ export class EmailService {
         to,
         subject,
         html,
+        ...(text ? { text } : {})
       })
     } catch (error) {
       console.error('Email send error:', error)
@@ -365,4 +366,103 @@ export class EmailService {
 
     await this.sendEmail(email, subject, html)
   }
+
+
+static async sendAdminMessageEmail(
+  userEmail: string,
+  userName: string,
+  message: string,
+  adminName: string
+): Promise<void> {
+  const subject = 'Message from MentorMatch Admin';
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Message from Admin</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%); padding: 30px 20px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">MentorMatch</h1>
+          <p style="color: #F8F3EE; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Admin Message</p>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 40px 30px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="width: 60px; height: 60px; background-color: #8B4513; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 8L10.89 13.26C11.2187 13.4793 11.6049 13.5963 12 13.5963C12.3951 13.5963 12.7813 13.4793 13.11 13.26L21 8M5 19H19C19.5304 19 20.0391 18.7893 20.4142 18.4142C20.7893 18.0391 21 17.5304 21 17V7C21 6.46957 20.7893 5.96086 20.4142 5.58579C20.0391 5.21071 19.5304 5 19 5H5C4.46957 5 3.96086 5.21071 3.58579 5.58579C3.21071 5.96086 3 6.46957 3 7V17C3 17.5304 3.21071 18.0391 3.58579 18.4142C3.96086 18.7893 4.46957 19 5 19Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h2 style="color: #2A2A2A; margin: 0; font-size: 24px; font-weight: 600;">You have a message from our admin team</h2>
+          </div>
+
+          <div style="background-color: #F8F3EE; border-radius: 8px; padding: 25px; margin: 20px 0;">
+            <p style="color: #2A2A2A; margin: 0 0 15px 0; font-size: 16px; font-weight: 600;">Hi ${userName},</p>
+            <p style="color: #2A2A2A; margin: 0; font-size: 16px; line-height: 1.6;">${message}</p>
+          </div>
+
+          <div style="background-color: #E8DDD1; border-radius: 8px; padding: 20px; margin: 25px 0;">
+            <p style="color: #8B7355; margin: 0; font-size: 14px; text-align: center;">
+              <strong>From:</strong> ${adminName}<br>
+              <strong>Sent:</strong> ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/dashboard" 
+               style="background-color: #8B4513; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block; transition: background-color 0.3s;">
+              View Dashboard
+            </a>
+          </div>
+
+          <div style="border-top: 1px solid #E8DDD1; padding-top: 25px; margin-top: 30px;">
+            <p style="color: #8B7355; font-size: 14px; line-height: 1.6; margin: 0;">
+              If you have any questions or need assistance, feel free to reply to this email or contact our support team.
+            </p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #2A2A2A; padding: 25px 30px; text-align: center;">
+          <p style="color: #8B7355; font-size: 14px; margin: 0 0 10px 0;">
+            This message was sent by the MentorMatch admin team.
+          </p>
+          <p style="color: #8B7355; font-size: 12px; margin: 0;">
+            © ${new Date().getFullYear()} MentorMatch. All rights reserved.
+          </p>
+        </div>
+
+      </div>
+    </body>
+    </html>
+  `;
+
+  const textContent = `
+    Message from MentorMatch Admin
+    
+    Hi ${userName},
+    
+    ${message}
+    
+    From: ${adminName}
+    Sent: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
+    
+    You can view your dashboard at: ${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/dashboard
+    
+    If you have any questions, please contact our support team.
+    
+    Best regards,
+    MentorMatch Team
+  `;
+
+  await this.sendEmail(userEmail, subject, htmlContent, textContent);
+}
 }

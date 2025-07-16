@@ -5,7 +5,7 @@ export interface User {
   _id?: ObjectId;
   email: string;
   passwordHash: string;
-  role: 'admin' | 'mentor' | 'student';
+  role: 'admin' | 'mentor' | 'mentee';
   firstName: string;
   lastName: string;
   isVerified: boolean;

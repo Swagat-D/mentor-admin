@@ -25,7 +25,7 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
     ] = await Promise.all([
       usersCollection.countDocuments({ isActive: true }),
       usersCollection.countDocuments({ role: 'mentor', isActive: true }),
-      usersCollection.countDocuments({ role: 'student', isActive: true }),
+      usersCollection.countDocuments({ role: 'mentee', isActive: true }), // Changed to mentee
       sessionsCollection.countDocuments({ 
         status: 'scheduled', 
         scheduledAt: { $gte: new Date() } 

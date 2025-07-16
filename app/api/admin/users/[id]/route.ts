@@ -24,7 +24,7 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
 
     const user = await usersCollection.findOne(
       { _id: new ObjectId(userId) },
-      { projection: { passwordHash: 0, otpCode: 0, passwordResetOTP: 0 } }
+      { projection: { passwordHash: 0, password: 0, otpCode: 0, passwordResetOTP: 0 } }
     );
 
     if (!user) {
@@ -32,6 +32,52 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
         { success: false, message: 'User not found' },
         { status: 404 }
       );
+    }
+
+    // Transform user data to match frontend expectations
+    let transformedUser;
+
+    if (user.role === 'mentee') {
+      // For students (mentees) - use name field and split it
+      transformedUser = {
+        _id: user._id,
+        firstName: user.name ? user.name.split(' ')[0] : 'Unknown',
+        lastName: user.name ? user.name.split(' ').slice(1).join(' ') || '' : '',
+        email: user.email,
+        role: 'student', // Map mentee to student for frontend
+        isActive: user.isActive,
+        isVerified: user.isEmailVerified || false,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+        // Additional student fields
+        phone: user.phone,
+        avatar: user.avatar,
+        gender: user.gender,
+        ageRange: user.ageRange,
+        studyLevel: user.studyLevel,
+        bio: user.bio,
+        location: user.location,
+        timezone: user.timezone,
+        goals: user.goals,
+        isOnboarded: user.isOnboarded,
+        onboardingStatus: user.onboardingStatus,
+        stats: user.stats
+      };
+    } else {
+      // For mentors and admins - use existing structure
+      transformedUser = {
+        _id: user._id,
+        firstName: user.firstName || 'Unknown',
+        lastName: user.lastName || '',
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        isVerified: user.isVerified || false,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+        // Additional fields if they exist
+        theme: user.theme
+      };
     }
 
     // Get additional data based on role
@@ -71,7 +117,7 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
           totalEarnings: 0
         }
       };
-    } else if (user.role === 'student') {
+    } else if (user.role === 'mentee') {
       const sessionStats = await sessionsCollection.aggregate([
         { $match: { studentId: new ObjectId(userId) } },
         {
@@ -106,7 +152,7 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
     return NextResponse.json({
       success: true,
       data: {
-        user,
+        user: transformedUser,
         ...additionalData
       }
     });
@@ -130,14 +176,52 @@ export const PATCH = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
     const { db } = await connectToDatabase();
     const usersCollection = db.collection('users');
 
+    // Get the current user to check their role
+    const currentUser = await usersCollection.findOne({ _id: new ObjectId(userId) });
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, message: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Prepare update data based on user type
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+
+    // Handle role updates with proper mapping
+    if (validatedData.role) {
+      const roleMapping: { [key: string]: string } = {
+        'student': 'mentee',
+        'mentor': 'mentor',
+        'admin': 'admin'
+      };
+      updateData.role = roleMapping[validatedData.role] || validatedData.role;
+    }
+
+    // Handle isActive updates
+    if (typeof validatedData.isActive === 'boolean') {
+      updateData.isActive = validatedData.isActive;
+    }
+
+    // Handle name updates differently based on user type
+    if (validatedData.firstName || validatedData.lastName) {
+      if (currentUser.role === 'mentee') {
+        // For students, update the name field
+        const firstName = validatedData.firstName || (currentUser.name ? currentUser.name.split(' ')[0] : '');
+        const lastName = validatedData.lastName || (currentUser.name ? currentUser.name.split(' ').slice(1).join(' ') : '');
+        updateData.name = `${firstName} ${lastName}`.trim();
+      } else {
+        // For mentors and admins, update firstName and lastName fields
+        if (validatedData.firstName) updateData.firstName = validatedData.firstName;
+        if (validatedData.lastName) updateData.lastName = validatedData.lastName;
+      }
+    }
+
     const result = await usersCollection.updateOne(
       { _id: new ObjectId(userId) },
-      {
-        $set: {
-          ...validatedData,
-          updatedAt: new Date()
-        }
-      }
+      { $set: updateData }
     );
 
     if (result.matchedCount === 0) {
@@ -172,4 +256,3 @@ export const PATCH = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
     );
   }
 });
-

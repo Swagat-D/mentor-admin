@@ -23,12 +23,19 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
       query.$or = [
         { firstName: { $regex: search, $options: 'i' } },
         { lastName: { $regex: search, $options: 'i' } },
+        { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
       ];
     }
     
     if (role && role !== 'all') {
-      query.role = role;
+      // Map frontend role names to database role names
+      const roleMapping: { [key: string]: string } = {
+        'student': 'mentee',
+        'mentor': 'mentor',
+        'admin': 'admin'
+      };
+      query.role = roleMapping[role] || role;
     }
     
     if (status === 'active') {
@@ -44,15 +51,64 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .project({ passwordHash: 0, otpCode: 0, passwordResetOTP: 0 })
+        .project({ passwordHash: 0, password: 0, otpCode: 0, passwordResetOTP: 0 })
         .toArray(),
       usersCollection.countDocuments(query)
     ]);
 
+    // Transform the data to match frontend expectations
+    const transformedUsers = users.map(user => {
+      // Handle different user structures
+      let firstName, lastName, isVerified;
+      
+      if (user.role === 'mentee') {
+        // For students (mentees) - use name field and split it
+        firstName = user.name ? user.name.split(' ')[0] : 'Unknown';
+        lastName = user.name ? user.name.split(' ').slice(1).join(' ') || '' : '';
+        isVerified = user.isEmailVerified || false;
+      } else {
+        // For mentors and admins - use existing firstName/lastName fields
+        firstName = user.firstName || 'Unknown';
+        lastName = user.lastName || '';
+        isVerified = user.isVerified || false;
+      }
+
+      return {
+        _id: user._id,
+        firstName,
+        lastName,
+        email: user.email,
+        role: user.role === 'mentee' ? 'student' : user.role, // Map mentee to student for frontend
+        isActive: user.isActive,
+        isVerified,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+        // Additional fields (mainly for students)
+        ...(user.role === 'mentee' && {
+          phone: user.phone,
+          avatar: user.avatar,
+          gender: user.gender,
+          ageRange: user.ageRange,
+          studyLevel: user.studyLevel,
+          bio: user.bio,
+          location: user.location,
+          timezone: user.timezone,
+          goals: user.goals,
+          isOnboarded: user.isOnboarded,
+          onboardingStatus: user.onboardingStatus,
+          stats: user.stats
+        }),
+        // Additional fields for mentors/admins
+        ...(user.role !== 'mentee' && {
+          theme: user.theme
+        })
+      };
+    });
+
     return NextResponse.json({
       success: true,
       data: {
-        users,
+        users: transformedUsers,
         pagination: {
           page,
           limit,
@@ -70,4 +126,3 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
     );
   }
 });
-

@@ -251,7 +251,7 @@ export default function UsersManagement({
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                             <span className="text-sm font-medium text-primary">
-                              {user.firstName[0]}{user.lastName[0]}
+                              {user.firstName?.[0] ?? ''}{user.lastName?.[0] ?? ''}
                             </span>
                           </div>
                           <div>
@@ -342,7 +342,7 @@ export default function UsersManagement({
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
                         <span className="text-sm font-medium text-primary">
-                          {user.firstName[0]}{user.lastName[0]}
+                          {user.firstName?.[0] || 'U'}{user.lastName?.[0] || 'U'}
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
