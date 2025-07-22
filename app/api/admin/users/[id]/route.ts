@@ -1,4 +1,4 @@
-// app/api/admin/users/[id]/route.ts
+// app/api/admin/users/[id]/route.ts - Fixed with correct test status detection
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth, AdminAuthenticatedRequest } from '@/lib/auth/adminMiddleware';
 import { connectToDatabase } from '@/lib/database/connection';
@@ -10,6 +10,11 @@ const updateUserSchema = z.object({
   role: z.enum(['student', 'mentor', 'admin']).optional(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
+  // Student-specific fields
+  gender: z.string().optional(),
+  ageRange: z.string().optional(),
+  studyLevel: z.string().optional(),
+  bio: z.string().optional(),
 });
 
 // Force dynamic rendering
@@ -24,10 +29,11 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
     const usersCollection = db.collection('users');
     const mentorProfilesCollection = db.collection('mentorProfiles');
     const sessionsCollection = db.collection('sessions');
+    const psychometricTestsCollection = db.collection('psychometricTests');
 
     const user = await usersCollection.findOne(
       { _id: new ObjectId(userId) },
-      { projection: { passwordHash: 0, password: 0, otpCode: 0, passwordResetOTP: 0 } }
+      { projection: { password: 0, otpCode: 0, passwordResetOTP: 0 } }
     );
 
     if (!user) {
@@ -37,19 +43,37 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
       );
     }
 
+    // Check if user has taken psychometric test (for students)
+    let isTestGiven = false;
+    if (user.role === 'mentee') {
+      // Check both the user's isTestGiven field and psychometricTests collection
+      const hasTestInCollection = await psychometricTestsCollection.findOne({
+        userId: new ObjectId(userId),
+        status: 'completed'
+      });
+      
+      // Use either the user field or the collection data
+      isTestGiven = user.isTestGiven === true || !!hasTestInCollection;
+    }
+
     // Transform user data to match frontend expectations
     let transformedUser;
 
     if (user.role === 'mentee') {
       // For students (mentees) - use name field and split it
+      const nameParts = user.name ? user.name.split(' ') : ['Unknown'];
+      const firstName = nameParts[0] || 'Unknown';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
       transformedUser = {
         _id: user._id,
-        firstName: user.name ? user.name.split(' ')[0] : 'Unknown',
-        lastName: user.name ? user.name.split(' ').slice(1).join(' ') || '' : '',
+        firstName: firstName,
+        lastName: lastName,
         email: user.email,
         role: 'student', // Map mentee to student for frontend
         isActive: user.isActive,
         isVerified: user.isEmailVerified || false,
+        isTestGiven: isTestGiven,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
         // Additional student fields
@@ -64,10 +88,11 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
         goals: user.goals,
         isOnboarded: user.isOnboarded,
         onboardingStatus: user.onboardingStatus,
-        stats: user.stats
+        stats: user.stats,
+        provider: user.provider
       };
     } else {
-      // For mentors and admins - use existing structure
+      // For mentors and admins - use existing firstName/lastName fields
       transformedUser = {
         _id: user._id,
         firstName: user.firstName || 'Unknown',
@@ -76,6 +101,7 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
         role: user.role,
         isActive: user.isActive,
         isVerified: user.isVerified || false,
+        isTestGiven: false, // Only applicable to students
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
         // Additional fields if they exist
@@ -148,6 +174,10 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
           totalSessions: 0,
           completedSessions: 0,
           totalSpent: 0
+        },
+        testStatus: {
+          isTestGiven: isTestGiven,
+          hasResults: isTestGiven
         }
       };
     }
@@ -220,6 +250,14 @@ export const PATCH = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
         if (validatedData.firstName) updateData.firstName = validatedData.firstName;
         if (validatedData.lastName) updateData.lastName = validatedData.lastName;
       }
+    }
+
+    // Handle student-specific fields
+    if (currentUser.role === 'mentee') {
+      if (validatedData.gender) updateData.gender = validatedData.gender;
+      if (validatedData.ageRange) updateData.ageRange = validatedData.ageRange;
+      if (validatedData.studyLevel) updateData.studyLevel = validatedData.studyLevel;
+      if (validatedData.bio !== undefined) updateData.bio = validatedData.bio;
     }
 
     const result = await usersCollection.updateOne(

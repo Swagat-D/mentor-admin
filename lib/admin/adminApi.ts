@@ -1,6 +1,45 @@
-// lib/admin/adminApi.ts - Updated with Enhanced Auth
+// lib/admin/adminApi.ts - Updated with Test Results Support
 import { DashboardStats, UserListItem, VerificationItem, SessionItem } from '@/types/admin';
 import AdminAuthManager from '@/lib/auth/adminAuthManager';
+
+export interface PsychometricTestResult {
+  _id: string;
+  userId: string;
+  sections: {
+    interests: {
+      realistic: number;
+      investigative: number;
+      artistic: number;
+      social: number;
+      enterprising: number;
+      conventional: number;
+      hollandCode: string;
+    };
+    personality: {
+      L1: number;
+      L2: number;
+      R1: number;
+      R2: number;
+      dominantQuadrants: string[];
+      personalityTypes: string[];
+    };
+    employability: {
+      selfManagement: number;
+      teamWork: number;
+      enterprising: number;
+      problemSolving: number;
+      speakingListening: number;
+      quotient: number;
+    };
+    characterStrengths: {
+      top3Strengths: string[];
+      categories: string[];
+      values: string[];
+    };
+  };
+  completedAt: string;
+  isValid: boolean;
+}
 
 export class AdminApi {
   private static async request(endpoint: string, options?: RequestInit) {
@@ -61,12 +100,22 @@ export class AdminApi {
     role?: string;
     firstName?: string;
     lastName?: string;
+    gender?: string;
+    ageRange?: string;
+    studyLevel?: string;
+    bio?: string;
   }) {
     const data = await this.request(`/api/admin/users/${userId}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
     return data;
+  }
+
+  // Psychometric Test Results (NEW)
+  static async getUserTestResults(userId: string): Promise<PsychometricTestResult> {
+    const data = await this.request(`/api/admin/users/${userId}/test-results`);
+    return data.data;
   }
 
   // Verification Management
@@ -120,7 +169,7 @@ export class AdminApi {
     };
   }
 
-  // Notification Management (NEW)
+  // Notification Management
   static async getNotifications(params: {
     page?: number;
     limit?: number;
@@ -194,7 +243,7 @@ export class AdminApi {
     return data;
   }
 
-  // Analytics (NEW)
+  // Analytics
   static async getAnalytics(params: {
     timeRange?: string;
   } = {}) {
@@ -214,7 +263,7 @@ export class AdminApi {
     return data.data;
   }
 
-  // Authentication - Updated methods
+  // Authentication
   static async login(credentials: { email: string; password: string }) {
     // Don't use AdminAuthManager for login (no auth needed)
     const response = await fetch('/api/admin/auth/login', {
@@ -293,7 +342,7 @@ export class AdminApi {
     return data;
   }
 
-  // File Management (NEW)
+  // File Management
   static async downloadFile(filePath: string) {
     // Use AdminAuthManager but return response directly for file download
     const response = await AdminAuthManager.makeAuthenticatedRequest(
@@ -308,7 +357,7 @@ export class AdminApi {
     return response; // Return response for blob handling
   }
 
-  // Message Management (NEW)
+  // Message Management
   static async sendMessage(userId: string, message: string) {
     const data = await this.request('/api/admin/messages/send', {
       method: 'POST',
@@ -317,7 +366,7 @@ export class AdminApi {
     return data;
   }
 
-  // Export functionality (NEW)
+  // Export functionality
   static async exportUsers(params: {
     format: 'csv' | 'json' | 'excel';
     search?: string;
@@ -343,7 +392,7 @@ export class AdminApi {
     return response; // Return response for blob handling
   }
 
-  // Health check (NEW)
+  // Health check
   static async checkHealth() {
     try {
       const response = await AdminAuthManager.makeAuthenticatedRequest('/api/admin/auth/me');

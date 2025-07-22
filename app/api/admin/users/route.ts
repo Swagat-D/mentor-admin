@@ -1,3 +1,4 @@
+// app/api/admin/users/route.ts - Fixed with correct test status detection
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth, AdminAuthenticatedRequest } from '@/lib/auth/adminMiddleware';
 import { connectToDatabase } from '@/lib/database/connection';
@@ -18,6 +19,7 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
 
     const { db } = await connectToDatabase();
     const usersCollection = db.collection('users');
+    const psychometricTestsCollection = db.collection('psychometricTests');
 
     // Build query
     const query: any = {};
@@ -54,26 +56,48 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .project({ passwordHash: 0, password: 0, otpCode: 0, passwordResetOTP: 0 })
+        .project({ password: 0, otpCode: 0, passwordResetOTP: 0 })
         .toArray(),
       usersCollection.countDocuments(query)
     ]);
 
+    // Get test status for all students in one query
+    const studentUserIds = users
+      .filter(user => user.role === 'mentee')
+      .map(user => user._id);
+
+    const completedTests = await psychometricTestsCollection
+      .find({
+        userId: { $in: studentUserIds },
+        status: 'completed'
+      })
+      .project({ userId: 1 })
+      .toArray();
+
+    const testCompletedUserIds = new Set(
+      completedTests.map(test => test.userId.toString())
+    );
+
     // Transform the data to match frontend expectations
     const transformedUsers = users.map(user => {
       // Handle different user structures
-      let firstName, lastName, isVerified;
+      let firstName, lastName, isVerified, isTestGiven = false;
       
       if (user.role === 'mentee') {
         // For students (mentees) - use name field and split it
-        firstName = user.name ? user.name.split(' ')[0] : 'Unknown';
-        lastName = user.name ? user.name.split(' ').slice(1).join(' ') || '' : '';
+        const nameParts = user.name ? user.name.split(' ') : ['Unknown'];
+        firstName = nameParts[0] || 'Unknown';
+        lastName = nameParts.slice(1).join(' ') || '';
         isVerified = user.isEmailVerified || false;
+        
+        // Check both user field and psychometricTests collection
+        isTestGiven = user.isTestGiven === true || testCompletedUserIds.has(user._id.toString());
       } else {
         // For mentors and admins - use existing firstName/lastName fields
         firstName = user.firstName || 'Unknown';
         lastName = user.lastName || '';
         isVerified = user.isVerified || false;
+        isTestGiven = false; // Not applicable to mentors/admins
       }
 
       return {
@@ -84,6 +108,7 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
         role: user.role === 'mentee' ? 'student' : user.role, // Map mentee to student for frontend
         isActive: user.isActive,
         isVerified,
+        isTestGiven,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
         // Additional fields (mainly for students)
@@ -99,7 +124,8 @@ export const GET = withAdminAuth(async (req: AdminAuthenticatedRequest) => {
           goals: user.goals,
           isOnboarded: user.isOnboarded,
           onboardingStatus: user.onboardingStatus,
-          stats: user.stats
+          stats: user.stats,
+          provider: user.provider
         }),
         // Additional fields for mentors/admins
         ...(user.role !== 'mentee' && {
