@@ -302,20 +302,30 @@ Report Status: ${testResult.isValid ? 'Valid' : 'Invalid'}
     document.body.removeChild(a);
   }
 
-  // Enhanced PDF generation method (would use jsPDF in real implementation)
-  static async generateAdvancedPDF(
-    testResult: PsychometricTestResult, 
-    userName: string
-  ): Promise<void> {
-    try {
-      // This is where you would implement jsPDF or similar
-      // For now, we'll use the text version
-      const pdfBlob = await this.generateTestResultsPDF(testResult, userName);
-      const fileName = `${userName.replace(/\s+/g, '_')}_psychometric_results_${new Date().toISOString().split('T')[0]}.txt`;
-      this.downloadPDF(pdfBlob, fileName);
-    } catch (error) {
-      console.error('PDF generation failed:', error);
-      throw new Error('Failed to generate PDF report');
-    }
+    // Enhanced PDF generation method
+static async generateAdvancedPDF(
+  testResult: PsychometricTestResult, 
+  userName: string
+): Promise<void> {
+  try {
+    const reportContent = this.generateTextReport(testResult, userName);
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const fileName = `${userName.replace(/\s+/g, '_')}_psychometric_results_${new Date().toISOString().split('T')[0]}.txt`;
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error('PDF generation failed:', error);
+    throw new Error('Failed to generate PDF report');
   }
+}  
 }

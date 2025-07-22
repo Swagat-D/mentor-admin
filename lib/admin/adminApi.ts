@@ -1,4 +1,4 @@
-// lib/admin/adminApi.ts - Updated with Test Results Support
+// lib/admin/adminApi.ts - Updated with correct Test Results interfaces
 import { DashboardStats, UserListItem, VerificationItem, SessionItem } from '@/types/admin';
 import AdminAuthManager from '@/lib/auth/adminAuthManager';
 
@@ -35,10 +35,87 @@ export interface PsychometricTestResult {
       top3Strengths: string[];
       categories: string[];
       values: string[];
+      userResponses?: {
+        whatYouLike?: string;
+        whatYouAreGoodAt?: string;
+        recentProjects?: string;
+      };
     };
   };
   completedAt: string;
   isValid: boolean;
+  rawData?: {
+    riasecResult?: any;
+    brainProfileResult?: any;
+    employabilityResult?: any;
+    personalInsightsResult?: any;
+  };
+}
+
+// Additional interfaces for the raw database structure
+export interface RiasecResult {
+  sectionId: string;
+  sectionName: string;
+  completedAt: string;
+  timeSpent: number;
+  responses: Record<string, any>;
+  scores: {
+    R: number;
+    I: number;
+    A: number;
+    S: number;
+    E: number;
+    C: number;
+  };
+  interpretation: string;
+  recommendations: string[];
+}
+
+export interface BrainProfileResult {
+  sectionId: string;
+  sectionName: string;
+  completedAt: string;
+  timeSpent: number;
+  responses: Record<string, any>;
+  quadrantScores: {
+    L1: number;
+    L2: number;
+    R1: number;
+    R2: number;
+  };
+  dominantQuadrants: string[];
+  personalityTypes: string[];
+  interpretation: string;
+}
+
+export interface EmployabilityResult {
+  sectionId: string;
+  sectionName: string;
+  completedAt: string;
+  timeSpent: number;
+  responses: Record<string, any>;
+  scores: {
+    selfManagement: number;
+    teamWork: number;
+    enterprising: number;
+    problemSolving: number;
+    speakingListening: number;
+  };
+  overallScore: number;
+  interpretation: string;
+}
+
+export interface PersonalInsightsResult {
+  sectionId: string;
+  sectionName: string;
+  completedAt: string;
+  responses: {
+    whatYouLike: string;
+    whatYouAreGoodAt: string;
+    recentProjects: string;
+  };
+  characterStrengths: string[];
+  valuesInLife: string[];
 }
 
 export class AdminApi {
@@ -104,6 +181,7 @@ export class AdminApi {
     ageRange?: string;
     studyLevel?: string;
     bio?: string;
+    resetTestStatus?: boolean;
   }) {
     const data = await this.request(`/api/admin/users/${userId}`, {
       method: 'PATCH',
@@ -112,10 +190,48 @@ export class AdminApi {
     return data;
   }
 
-  // Psychometric Test Results (NEW)
+  // Psychometric Test Results
   static async getUserTestResults(userId: string): Promise<PsychometricTestResult> {
-    const data = await this.request(`/api/admin/users/${userId}/test-results`);
-    return data.data;
+    try {
+      console.log('AdminApi: Fetching test results for user:', userId);
+      
+      const data = await this.request(`/api/admin/users/${userId}/test-results`);
+      
+      console.log('AdminApi: Received data:', data);
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to fetch test results');
+      }
+      
+      return data.data;
+    } catch (error) {
+      console.error('AdminApi: getUserTestResults error:', error);
+      throw error;
+    }
+  }
+
+  // Get raw test structure for debugging
+  static async getTestStructure(userId: string) {
+    try {
+      const data = await this.request(`/api/admin/debug/test-structure/${userId}`);
+      return data.data;
+    } catch (error) {
+      console.error('AdminApi: getTestStructure error:', error);
+      throw error;
+    }
+  }
+
+  // Create sample test data for testing
+  static async createSampleTest(userId: string) {
+    try {
+      const data = await this.request(`/api/admin/debug/create-sample-test/${userId}`, {
+        method: 'POST',
+      });
+      return data;
+    } catch (error) {
+      console.error('AdminApi: createSampleTest error:', error);
+      throw error;
+    }
   }
 
   // Verification Management

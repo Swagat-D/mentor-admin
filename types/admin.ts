@@ -76,10 +76,21 @@ export interface PsychometricTestResult {
       top3Strengths: string[]
       categories: string[]
       values: string[]
+      userResponses?: {
+        whatYouLike?: string
+        whatYouAreGoodAt?: string
+        recentProjects?: string
+      }
     }
   }
   completedAt: string
   isValid: boolean
+  rawData?: {
+    riasecResult?: any
+    brainProfileResult?: any
+    employabilityResult?: any
+    personalInsightsResult?: any
+  }
 }
 
 export interface VerificationItem {
